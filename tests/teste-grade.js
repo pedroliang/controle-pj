@@ -85,6 +85,21 @@ checa('total do dia da quinta é 8h', grade.includes('>8h<'));
 checa('coluna de total da semana existe', grade.includes('na semana'));
 checa('total de Daniel com 2h extras é 10h', grade.includes('10h'));
 
+console.log('\nTotal do mês por pessoa');
+checa('tem a coluna de total do mês', grade.includes('em agosto'));
+checa('coluna do mês está destacada', grade.includes('p-mes'));
+// Andreia: 1 dia presente (8h) na semana E no mês -> total do mês = 8h
+// Daniel: 1 dia de 10h -> total do mês = 10h. Soma = 18h
+checa('soma do mês de todos = 18h', grade.includes('>18h<'));
+checa('dica do mês fala em previstas', grade.includes('previstas'));
+
+// Um dia em outra semana do mesmo mês entra no total do mês, mas não no da semana
+S.registros['2026-08-17|a1'] = { data: '2026-08-17', colaborador_id: 'a1', status: 'PRESENTE' };
+ctx.renderPonto();
+const grade2 = documento.getElementById('gradePonto').innerHTML;
+checa('dia de outra semana soma no mês (8h -> 16h)', grade2.includes('>16h<'));
+checa('total da semana de Andreia continua 8h', /p-tot">8h/.test(grade2));
+
 console.log('\nDica ao passar o mouse');
 checa('dica traz as horas trabalhadas', grade.includes('trabalhadas'));
 

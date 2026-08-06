@@ -109,7 +109,9 @@ td.nome{font-weight:600;white-space:nowrap}
 .pt-tab th.fer{background:var(--info-luz)}
 .pt-tab th .fer-tag{display:block;font-size:9.5px;color:var(--info);font-weight:700;margin-top:1px;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:88px}
 .pt-tab th.folga{background:#f1f5f9;color:var(--txt3)}
-.pt-tab td.p-tot,.pt-tab th.p-tot{background:#f8fafc;font-weight:700;text-align:right;padding:8px 12px;white-space:nowrap;font-variant-numeric:tabular-nums;border-right:none}
+.pt-tab td.p-tot,.pt-tab th.p-tot{background:#f8fafc;font-weight:700;text-align:right;padding:8px 12px;white-space:nowrap;font-variant-numeric:tabular-nums;border-right:1px solid var(--line)}
+.pt-tab td.p-mes,.pt-tab th.p-mes{background:var(--brand-luz);border-left:2px solid var(--line-forte);border-right:none}
+.pt-tab th.p-mes{color:var(--brand-esc)}
 
 .cel{width:100%;min-width:84px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:.1s;border-radius:0}
 .cel:hover{box-shadow:inset 0 0 0 2px var(--brand)}
@@ -529,6 +531,14 @@ function segundaDe(s){
   return iso(d);
 }
 function brData(s){ var p = String(s).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+
+/** Mês a que a semana pertence (regra da quinta-feira, para semanas que caem entre dois meses). */
+function mesDaSemana(){ return addDias(S.semana, 3).slice(0, 7); }
+function limitesMes(ym){
+  var p = ym.split('-');
+  var ultimo = new Date(+p[0], +p[1], 0).getDate();
+  return { de: ym + '-01', ate: ym + '-' + String(ultimo).padStart(2, '0') };
+}
 function brExtenso(s){ var d = deIso(s); return DIAS_CURTO[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
 
 function hm2min(hm){
@@ -758,9 +768,13 @@ function normColab(c){
   return c;
 }
 
+/** Carrega a semana exibida e o mês inteiro a que ela pertence (para o total do mês). */
 function carregarSemana(){
   if(!EP) return Promise.resolve();
-  var de = S.semana, ate = addDias(S.semana, 6);
+  var m = limitesMes(mesDaSemana());
+  var de = S.semana < m.de ? S.semana : m.de;
+  var fimSemana = addDias(S.semana, 6);
+  var ate = fimSemana > m.ate ? fimSemana : m.ate;
   return api('listRegistros', { de: de, ate: ate })
     .then(function(d){
       (d.registros || []).forEach(function(r){ S.registros[r.data + '|' + r.colaborador_id] = r; });
@@ -828,6 +842,10 @@ function renderPonto(){
   var cfg = galpaoCfg(S.galpao);
   var datas = intervaloDatas(S.semana, addDias(S.semana, 6));
   var lista = colabsDoGalpao(S.galpao);
+  var ym = mesDaSemana();
+  var lm = limitesMes(ym);
+  var datasMes = intervaloDatas(lm.de, lm.ate);
+  var nomeMes = MESES[parseInt(ym.split('-')[1], 10) - 1];
 
   document.getElementById('semRot').textContent = brData(S.semana) + ' — ' + brData(addDias(S.semana,6));
   document.getElementById('tituloGrade').textContent =
@@ -856,10 +874,13 @@ function renderPonto(){
        +   (f ? '<span class="fer-tag" title="'+esc(f.descricao)+'">'+esc(f.descricao)+'</span>' : '')
        + '</th>';
   });
-  h += '<th class="p-tot">Total<br><span style="font-weight:400;text-transform:none">na semana</span></th></tr></thead>';
+  h += '<th class="p-tot">Total<br><span style="font-weight:400;text-transform:none">na semana</span></th>'
+     + '<th class="p-tot p-mes">Total<br><span style="font-weight:400;text-transform:none">em '+esc(nomeMes)+'</span></th>'
+     + '</tr></thead>';
 
   // Corpo
   var totalDia = {}; datas.forEach(function(d){ totalDia[d] = 0; });
+  var totalMes = 0;
   var b = '<tbody>';
   lista.forEach(function(c){
     b += '<tr><td class="p-nome">'+esc(c.nome)+'</td>';
@@ -894,6 +915,15 @@ function renderPonto(){
     var sc = res.saldo === 0 ? '' : (res.saldo > 0 ? 'saldo-pos' : 'saldo-neg');
     b += '<td class="p-tot">'+min2dur(res.trabalhado)
        + '<div style="font-weight:600;font-size:11px" class="'+sc+'">'+(res.saldo>=0?'+':'')+min2dur(res.saldo)+'</div></td>';
+
+    var mes = consolidar(c, datasMes);
+    totalMes += mes.trabalhado;
+    var scm = mes.saldo === 0 ? '' : (mes.saldo > 0 ? 'saldo-pos' : 'saldo-neg');
+    var dicaMes = c.nome + ' — ' + nomeMes
+                + '\n' + min2dur(mes.trabalhado) + ' trabalhadas de ' + min2dur(mes.previsto) + ' previstas'
+                + '\n' + mes.presencas + ' presenças · ' + mes.faltas + ' faltas · ' + mes.faltasJust + ' justificadas';
+    b += '<td class="p-tot p-mes" title="'+esc(dicaMes)+'">'+min2dur(mes.trabalhado)
+       + '<div style="font-weight:600;font-size:11px" class="'+scm+'">'+(mes.saldo>=0?'+':'')+min2dur(mes.saldo)+'</div></td>';
     b += '</tr>';
   });
 
@@ -904,7 +934,8 @@ function renderPonto(){
     somaSemana += totalDia[d];
     b += '<td class="p-tot" style="text-align:center">'+(totalDia[d] ? min2dur(totalDia[d]) : '—')+'</td>';
   });
-  b += '<td class="p-tot">'+min2dur(somaSemana)+'</td></tr></tfoot>';
+  b += '<td class="p-tot">'+min2dur(somaSemana)+'</td>'
+     + '<td class="p-tot p-mes">'+min2dur(totalMes)+'</td></tr></tfoot>';
 
   tab.innerHTML = h + b;
   renderKpisSemana(lista, datas);
