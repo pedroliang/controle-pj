@@ -102,6 +102,28 @@ O botão **Exportar CSV** gera um arquivo que abre direto no Excel, com as horas
 
 ---
 
+## Endereço reserva pelo Google (opcional)
+
+O mesmo Apps Script pode **servir o site**, gerando uma URL do Google que funciona em qualquer computador e não depende do GitHub. Útil quando o GitHub Pages está fora do ar.
+
+1. No editor do Apps Script, clique no **+** ao lado de "Arquivos" → **HTML**, e dê o nome de **`Index`** (sem `.html`).
+2. Apague o conteúdo padrão e cole tudo o que está em [`apps-script/Index.html`](apps-script/Index.html).
+3. Cole também a versão mais recente de [`apps-script/Codigo.gs`](apps-script/Codigo.gs) (o `doGet` novo entrega a página quando não vem parâmetro `action`).
+4. **Implantar → Gerenciar implantações → editar (lápis) → Versão: Nova versão → Implantar.**
+5. Abra a URL `/exec` no navegador: em vez do JSON, aparece o site.
+
+A mesma URL passa a servir as duas coisas — o site quando aberta direto, e os dados quando chamada com `?action=...`.
+
+**Sempre que mexer no site**, regenere o arquivo antes de colar:
+
+```bash
+node tools/gerar-index-appsscript.js
+```
+
+Duas ressalvas: a página roda dentro de um iframe do Google, então o download do CSV pode ser bloqueado em alguns navegadores (nesse caso use o endereço do GitHub Pages); e cada atualização exige colar o arquivo de novo, enquanto no GitHub Pages basta um push.
+
+---
+
 ## Estrutura da planilha
 
 | Aba | Para que serve |

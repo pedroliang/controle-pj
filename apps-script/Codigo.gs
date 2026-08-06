@@ -87,8 +87,25 @@ function criarAba_(ss, nome, cols) {
 
 /* ============================ ROTEADOR ============================ */
 
+/**
+ * Sem parametro "action" -> entrega a pagina do site (arquivo Index.html do projeto).
+ * Com "action" -> responde a API em JSON.
+ * Assim a mesma URL serve o site e os dados, sem depender do GitHub.
+ */
 function doGet(e) {
-  return rotear_(e, (e && e.parameter) ? e.parameter : {});
+  var p = (e && e.parameter) ? e.parameter : {};
+  if (!p.action) {
+    try {
+      return HtmlService.createHtmlOutputFromFile('Index')
+        .setTitle('Controle PJ')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } catch (err) {
+      // Sem o arquivo Index.html no projeto, cai para a API (comportamento antigo).
+      return rotear_(e, p);
+    }
+  }
+  return rotear_(e, p);
 }
 
 function doPost(e) {
