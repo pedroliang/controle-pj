@@ -101,10 +101,26 @@ function doPost(e) {
   return rotear_(e, corpo);
 }
 
+/**
+ * Quando a chamada chega por GET (JSONP), os objetos vem como texto JSON.
+ * Aqui eles voltam a ser objetos de verdade.
+ */
+function normalizar_(req) {
+  var chaves = ['registros', 'colaborador', 'feriado', 'config'];
+  for (var i = 0; i < chaves.length; i++) {
+    var k = chaves[i];
+    if (typeof req[k] === 'string' && req[k]) {
+      try { req[k] = JSON.parse(req[k]); } catch (err) { /* deixa como esta */ }
+    }
+  }
+  return req;
+}
+
 function rotear_(e, req) {
   var callback = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : null;
   var saida;
   try {
+    req = normalizar_(req || {});
     var acao = req.action || 'bootstrap';
     var dados;
 

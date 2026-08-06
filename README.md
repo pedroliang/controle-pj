@@ -50,9 +50,9 @@ O ID dela já está fixado no topo do `Codigo.gs` (`PLANILHA_ID`). Para trocar d
 
 ### 3. Ligar o site à planilha
 
-1. Abra o site publicado no GitHub Pages.
-2. Vá em **Configuração**, cole a URL do App da Web e clique em **Salvar e conectar**.
-3. Pronto. A URL fica salva no navegador — **cada pessoa que for usar o site precisa colá-la uma vez** no computador dela.
+A URL do App da Web **já vem embutida no site** (constante `EP_PADRAO` no topo do `<script>` em `index.html`). Quem for usar o sistema só precisa abrir o link — não configura nada.
+
+Se um dia você reimplantar o Apps Script e a URL mudar, atualize o `EP_PADRAO` no `index.html` e dê push. Para um teste pontual em outra planilha, dá para colar outra URL em **Configuração**; ela vale só naquele navegador, e o botão *Voltar para a planilha padrão* desfaz.
 
 ### 4. Começar a usar
 
@@ -117,6 +117,12 @@ Marque como **Inativo**. Ele some da grade de lançamento, mas o histórico cont
 
 **Mudou o horário de um galpão. E os lançamentos antigos?**
 Lançamentos gravados com horário próprio (entrada/saída digitadas) não mudam. Os que usaram o horário padrão passam a ser calculados pelo novo horário. Se a mudança for permanente e você quiser preservar o passado, exporte o CSV do período antigo antes de alterar.
+
+**Quem for usar precisa configurar alguma coisa?**
+Não. A instalação acima é feita **uma única vez**. Depois disso, é só mandar o link do site — a pessoa abre e já está conectada à planilha.
+
+**Quem tiver o link consegue mexer nos dados?**
+Sim. O site é público e não tem senha, e a URL do Apps Script está no código da página. Como o link não é divulgado, funciona bem para uso interno — mas não é um cofre. Dá para fechar isso depois com uma senha na tela de entrada, se fizer sentido.
 
 **O site está lento.**
 Cada leitura ou gravação passa pelo Google Apps Script e leva cerca de 1 segundo. É o custo de usar a planilha como banco. Por isso os lançamentos são salvos em lote, e não um a um.

@@ -346,9 +346,11 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn pri" id="btnSalvarEndpoint">Salvar e conectar</button>
         <button class="btn" id="btnTestar">Testar conexão</button>
+        <button class="btn" id="btnUsarPadrao">Voltar para a planilha padrão</button>
       </div>
       <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--line)">
-        <h3 style="font-size:13px;font-weight:700;margin-bottom:12px">Como configurar (uma vez só)</h3>
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:12px">Trocar de planilha (normalmente não é preciso)</h3>
+        <p style="font-size:12.5px;color:var(--txt2);margin-bottom:12px">O site já vem ligado à planilha da empresa. Estes passos só servem se um dia for preciso apontar para outra planilha.</p>
         <ol class="passos">
           <li>Crie uma planilha em <b>sheets.new</b> e dê o nome de <b>Controle PJ</b>.</li>
           <li>No menu, vá em <b>Extensões → Apps Script</b>.</li>
@@ -475,8 +477,13 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
 /* =========================================================
    ESTADO
 ========================================================= */
+/* URL do App da Web (Apps Script) ligado à planilha do Google.
+   Vem embutida aqui para que ninguém precise configurar nada ao abrir o site.
+   Quem quiser apontar para outra planilha pode trocar na tela de Configuração. */
+var EP_PADRAO = 'https://script.google.com/macros/s/AKfycbxfSlwLCanEsX9HjPuQ_fgDXlhK1LpERGWMnvFwAalIpLZeLNdxwXmh1rQem5YJ7eEY/exec';
+
 var CHAVE_EP = 'controlepj.endpoint';
-var EP = localStorage.getItem(CHAVE_EP) || '';
+var EP = localStorage.getItem(CHAVE_EP) || EP_PADRAO;
 
 var S = {
   colaboradores: [],
@@ -1446,12 +1453,22 @@ function renderAvisoEndpoint(){
   var el = document.getElementById('avisoEndpoint');
   document.getElementById('cfgEndpoint').value = EP;
   if(!EP){
-    el.innerHTML = '<div class="alerta-box aviso"><b>O site ainda não está ligado a nenhuma planilha.</b><br>Siga os passos abaixo e cole a URL do App da Web para começar. A URL fica salva neste navegador — cada pessoa que for usar o site precisa colá-la uma vez.</div>';
+    el.innerHTML = '<div class="alerta-box aviso"><b>O site ainda não está ligado a nenhuma planilha.</b><br>Siga os passos abaixo e cole a URL do App da Web para começar.</div>';
   } else if(!S.conectado){
     el.innerHTML = '<div class="alerta-box erro"><b>Não consegui falar com a planilha.</b><br>Confirme se a implantação está com acesso "Qualquer pessoa" e se a URL termina em <code class="ep">/exec</code>.</div>';
   } else {
-    el.innerHTML = '<div class="alerta-box info"><b>Conectado.</b> Os dados estão sendo lidos e gravados na sua planilha do Google.</div>';
+    el.innerHTML = '<div class="alerta-box info"><b>Conectado.</b> Os dados estão sendo lidos e gravados na planilha do Google.'
+      + (EP === EP_PADRAO ? ' Esta é a planilha padrão do sistema — não precisa mexer em nada aqui.' : ' Você está usando uma planilha diferente da padrão.')
+      + '</div>';
   }
+}
+
+/* Volta para a planilha padrão do sistema */
+function usarPadrao(){
+  localStorage.removeItem(CHAVE_EP);
+  EP = EP_PADRAO;
+  S.registros = {}; S.pendentes = {};
+  bootstrap().then(function(){ toast('Voltou para a planilha padrão.', 'ok'); });
 }
 
 document.getElementById('btnSalvarEndpoint').onclick = function(){
@@ -1462,6 +1479,8 @@ document.getElementById('btnSalvarEndpoint').onclick = function(){
   S.registros = {}; S.pendentes = {};
   bootstrap().then(function(){ if(S.conectado){ irPara('ponto'); toast('Conectado à planilha.', 'ok'); } });
 };
+
+document.getElementById('btnUsarPadrao').onclick = usarPadrao;
 
 document.getElementById('btnTestar').onclick = function(){
   var v = document.getElementById('cfgEndpoint').value.trim();
