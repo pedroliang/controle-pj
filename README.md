@@ -82,6 +82,14 @@ A tela mostra uma grade: cada linha é um colaborador, cada coluna é um dia da 
 
 Dias fora da jornada do galpão (sábado no 64, domingo nos dois) e feriados cadastrados aparecem **bloqueados** — não precisam de lançamento e não entram na conta. Se alguém trabalhar mesmo assim, dá para lançar: as horas viram saldo positivo.
 
+A grade mostra **uma semana por vez**, mas não há limite de datas: use as setas ← → para andar para frente ou para trás, ou **Hoje** para voltar à semana atual (que é sempre a que abre por padrão). O campo **Buscar colaborador** filtra as linhas por nome, ignorando acentos e maiúsculas.
+
+### Ficha do PJ
+
+Para acompanhar uma pessoa específica: busque pelo nome, escolha o período (um mês ou datas livres) e veja o **extrato dia a dia** — status, entrada, saída, horas trabalhadas, previstas e saldo de cada dia, com o total do período no rodapé.
+
+Dá para corrigir qualquer dia direto da ficha pelo botão **Editar**, e exportar o extrato da pessoa em CSV. No relatório geral, clicar no nome de alguém abre a ficha dela já no mesmo período.
+
 ### Relatórios
 
 Escolha um mês (ou um intervalo de datas livre) e um galpão. O relatório traz, por colaborador:

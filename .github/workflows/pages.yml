@@ -26,6 +26,8 @@ jobs:
         run: node tests/testes.js
       - name: Rodar testes da grade
         run: node tests/teste-grade.js
+      - name: Rodar testes da ficha
+        run: node tests/teste-ficha.js
 
   publicar:
     needs: testes

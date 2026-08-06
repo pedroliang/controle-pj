@@ -199,6 +199,8 @@ td.nome{font-weight:600;white-space:nowrap}
 .filtros label.cmp{min-width:150px}
 .saldo-pos{color:var(--ok);font-weight:700} .saldo-neg{color:var(--erro);font-weight:700}
 code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word-break:break-all}
+.link-ficha{font:inherit;font-weight:600;color:var(--brand);text-align:left;padding:0;border-bottom:1px dashed transparent}
+.link-ficha:hover{border-bottom-color:var(--brand)}
 .passos{counter-reset:p;list-style:none}
 .passos li{counter-increment:p;position:relative;padding-left:34px;margin-bottom:12px;font-size:13px;color:var(--txt2)}
 .passos li::before{content:counter(p);position:absolute;left:0;top:0;width:23px;height:23px;border-radius:50%;
@@ -215,6 +217,7 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
     <div class="marca"><span class="logo">P</span> Controle PJ</div>
     <nav class="nav" id="nav">
       <button data-pg="ponto" class="on">Lançamento</button>
+      <button data-pg="ficha">Ficha do PJ</button>
       <button data-pg="relatorio">Relatórios</button>
       <button data-pg="colab">Colaboradores</button>
       <button data-pg="feriados">Feriados</button>
@@ -237,6 +240,10 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
       <p>Clique em uma célula para marcar o status do dia. Feriados e dias não úteis já vêm bloqueados.</p>
     </div>
     <div class="filtros">
+      <label class="cmp" style="min-width:190px">
+        <span>Buscar colaborador</span>
+        <input type="text" id="fBusca" placeholder="Digite parte do nome…" autocomplete="off">
+      </label>
       <label class="cmp" style="min-width:170px">
         <span>Galpão</span>
         <select id="fGalpao"></select>
@@ -269,6 +276,42 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
       <span><i style="background:var(--info)"></i> Feriado</span>
       <span><i style="background:var(--line-forte)"></i> Dia não útil</span>
     </div>
+  </div>
+</section>
+
+<!-- ============ FICHA DO PJ ============ -->
+<section class="pg" id="pg-ficha">
+  <div class="cab">
+    <div>
+      <h1>Ficha do PJ</h1>
+      <p>Busque a pessoa pelo nome e escolha o período para ver o extrato dia a dia.</p>
+    </div>
+    <div class="filtros">
+      <label class="cmp" style="min-width:200px">
+        <span>Buscar por nome</span>
+        <input type="text" id="fiBusca" placeholder="Digite parte do nome…" autocomplete="off">
+      </label>
+      <label class="cmp" style="min-width:240px">
+        <span>Colaborador</span>
+        <select id="fiColab"></select>
+      </label>
+      <label class="cmp">
+        <span>Período</span>
+        <select id="fiTipo">
+          <option value="mes">Mês</option>
+          <option value="livre">Datas livres</option>
+        </select>
+      </label>
+      <label class="cmp" id="fiWrapMes"><span>Mês</span><input type="month" id="fiMes"></label>
+      <label class="cmp" id="fiWrapDe" style="display:none"><span>De</span><input type="date" id="fiDe"></label>
+      <label class="cmp" id="fiWrapAte" style="display:none"><span>Até</span><input type="date" id="fiAte"></label>
+      <button class="btn pri" id="fiGerar">Ver ficha</button>
+      <button class="btn" id="fiCsv">Exportar CSV</button>
+    </div>
+  </div>
+
+  <div id="fiConteudo">
+    <div class="card"><div class="vazio-msg"><strong>Escolha um colaborador</strong>Digite o nome acima e clique em "Ver ficha".</div></div>
   </div>
 </section>
 
@@ -500,6 +543,8 @@ var S = {
   pendentes: {},        // mesma chave -> registro alterado
   semana: null,         // segunda-feira da semana exibida
   galpao: '64',
+  busca: '',            // filtro por nome na grade
+  ficha: null,          // colaborador aberto na Ficha do PJ
   relatorio: null,
   celAtual: null,
   conectado: false
@@ -803,6 +848,7 @@ document.getElementById('nav').addEventListener('click', function(e){
 ========================================================= */
 function renderTudo(){
   renderSeletoresGalpao();
+  renderSelectFicha();
   renderPonto();
   renderColab();
   renderFeriados();
@@ -832,16 +878,27 @@ function esc(s){
 /* =========================================================
    PÁGINA: LANÇAMENTO
 ========================================================= */
-function colabsDoGalpao(g){
+/** Tira acentos e caixa, para a busca funcionar digitando "jose" e achar "JOSÉ". */
+function chave(s){
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function colabsDoGalpao(g, busca){
+  var b = chave(busca);
   return S.colaboradores
-    .filter(function(c){ return c.ativo && (!g || c.galpao === g); })
+    .filter(function(c){
+      if(!c.ativo) return false;
+      if(g && c.galpao !== g) return false;
+      if(b && chave(c.nome).indexOf(b) === -1) return false;
+      return true;
+    })
     .sort(function(a,b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
 }
 
 function renderPonto(){
   var cfg = galpaoCfg(S.galpao);
   var datas = intervaloDatas(S.semana, addDias(S.semana, 6));
-  var lista = colabsDoGalpao(S.galpao);
+  var lista = colabsDoGalpao(S.galpao, S.busca);
   var ym = mesDaSemana();
   var lm = limitesMes(ym);
   var datasMes = intervaloDatas(lm.de, lm.ate);
@@ -853,7 +910,9 @@ function renderPonto(){
 
   var tab = document.getElementById('gradePonto');
   if(!lista.length){
-    tab.innerHTML = '<tbody><tr><td><div class="vazio-msg"><strong>Nenhum colaborador ativo neste galpão</strong>Cadastre os PJs na aba Colaboradores para começar a lançar o ponto.</div></td></tr></tbody>';
+    tab.innerHTML = S.busca
+      ? '<tbody><tr><td><div class="vazio-msg"><strong>Ninguém com esse nome neste galpão</strong>Limpe a busca ou troque o galpão no filtro ao lado.</div></td></tr></tbody>'
+      : '<tbody><tr><td><div class="vazio-msg"><strong>Nenhum colaborador ativo neste galpão</strong>Cadastre os PJs na aba Colaboradores para começar a lançar o ponto.</div></td></tr></tbody>';
     document.getElementById('kpisSemana').innerHTML = '';
     return;
   }
@@ -967,6 +1026,7 @@ document.getElementById('semAnt').onclick = function(){ S.semana = addDias(S.sem
 document.getElementById('semProx').onclick = function(){ S.semana = addDias(S.semana, 7); carregarSemana(); renderPonto(); };
 document.getElementById('semHoje').onclick = function(){ S.semana = segundaDe(hoje()); carregarSemana(); renderPonto(); };
 document.getElementById('fGalpao').onchange = function(){ S.galpao = this.value; renderPonto(); };
+document.getElementById('fBusca').oninput = function(){ S.busca = this.value; renderPonto(); };
 document.getElementById('btnRecarregar').onclick = function(){ S.registros = {}; bootstrap(); };
 
 /* Cliques na grade */
@@ -986,7 +1046,7 @@ document.getElementById('btnTodosPresentes').onclick = function(){
   var cfg = galpaoCfg(S.galpao);
   var datas = intervaloDatas(S.semana, addDias(S.semana,6));
   var n = 0;
-  colabsDoGalpao(S.galpao).forEach(function(c){
+  colabsDoGalpao(S.galpao, S.busca).forEach(function(c){
     datas.forEach(function(d){
       if(!ehDiaUtil(cfg,d) || feriadoDe(d,cfg.id)) return;
       var atual = regDe(d, c.id);
@@ -1002,7 +1062,7 @@ document.getElementById('btnTodosPresentes').onclick = function(){
 document.getElementById('btnLimparSemana').onclick = function(){
   if(!confirm('Limpar todos os lançamentos desta semana para este galpão?')) return;
   var datas = intervaloDatas(S.semana, addDias(S.semana,6));
-  colabsDoGalpao(S.galpao).forEach(function(c){
+  colabsDoGalpao(S.galpao, S.busca).forEach(function(c){
     datas.forEach(function(d){
       if(regDe(d, c.id)) marcar(d, c.id, { status:'' });
     });
@@ -1030,7 +1090,7 @@ function atualizarBarra(){
 }
 
 document.getElementById('btnDescartar').onclick = function(){
-  S.pendentes = {}; renderPonto();
+  S.pendentes = {}; renderPonto(); renderFicha();
 };
 
 document.getElementById('btnSalvarPonto').onclick = function(){
@@ -1044,7 +1104,7 @@ document.getElementById('btnSalvarPonto').onclick = function(){
         if(r.status) S.registros[k] = r; else delete S.registros[k];
       });
       S.pendentes = {};
-      renderPonto();
+      renderPonto(); renderFicha();
       toast('Lançamentos salvos na planilha.', 'ok');
     })
     .catch(function(e){ toast('Erro ao salvar: ' + e.message, 'erro'); })
@@ -1126,11 +1186,181 @@ document.getElementById('celAplicar').onclick = function(){
     intervalo_min: (a.status === 'PRESENTE' && !padrao) ? itv : '',
     obs: document.getElementById('celObs').value
   });
-  fecharModais(); renderPonto();
+  fecharModais(); renderPonto(); renderFicha();
 };
 document.getElementById('celLimpar').onclick = function(){
   marcar(S.celAtual.data, S.celAtual.colabId, { status:'' });
-  fecharModais(); renderPonto();
+  fecharModais(); renderPonto(); renderFicha();
+};
+
+/* =========================================================
+   PÁGINA: FICHA DO PJ
+========================================================= */
+function renderSelectFicha(){
+  var b = chave(document.getElementById('fiBusca').value);
+  var lista = S.colaboradores
+    .filter(function(c){ return !b || chave(c.nome).indexOf(b) !== -1; })
+    .sort(function(x,y){ return x.nome.localeCompare(y.nome, 'pt-BR'); });
+
+  var sel = document.getElementById('fiColab');
+  var antes = sel.value;
+  sel.innerHTML = lista.length
+    ? lista.map(function(c){
+        return '<option value="'+esc(c.id)+'">'+esc(c.nome)+' — '+esc(galpaoCfg(c.galpao).nome)+(c.ativo?'':' (inativo)')+'</option>';
+      }).join('')
+    : '<option value="">Ninguém com esse nome</option>';
+
+  var achou = lista.some(function(c){ return c.id === antes; });
+  if(achou) sel.value = antes;
+  else if(lista.length) sel.value = lista[0].id;
+}
+
+function periodoFicha(){
+  if(document.getElementById('fiTipo').value === 'mes'){
+    var m = document.getElementById('fiMes').value || hoje().slice(0,7);
+    return limitesMes(m);
+  }
+  return {
+    de: document.getElementById('fiDe').value || hoje().slice(0,8) + '01',
+    ate: document.getElementById('fiAte').value || hoje()
+  };
+}
+
+document.getElementById('fiBusca').oninput = renderSelectFicha;
+document.getElementById('fiTipo').onchange = function(){
+  var mes = this.value === 'mes';
+  document.getElementById('fiWrapMes').style.display = mes ? 'block' : 'none';
+  document.getElementById('fiWrapDe').style.display = mes ? 'none' : 'block';
+  document.getElementById('fiWrapAte').style.display = mes ? 'none' : 'block';
+};
+
+document.getElementById('fiGerar').onclick = function(){ abrirFicha(document.getElementById('fiColab').value); };
+document.getElementById('fiColab').onchange = function(){ if(S.ficha) abrirFicha(this.value); };
+
+/** Abre a ficha de um colaborador no período escolhido. */
+function abrirFicha(colabId, periodo){
+  var c = S.colaboradores.filter(function(x){ return x.id === colabId; })[0];
+  if(!c){ toast('Escolha um colaborador.', 'erro'); return; }
+  var p = periodo || periodoFicha();
+  if(p.de > p.ate){ toast('A data inicial é maior que a final.', 'erro'); return; }
+
+  S.ficha = { colab: c, periodo: p };
+  api('listRegistros', { de: p.de, ate: p.ate })
+    .then(function(d){
+      (d.registros || []).forEach(function(r){ S.registros[r.data + '|' + r.colaborador_id] = r; });
+      renderFicha();
+    })
+    .catch(function(e){ toast(e.message, 'erro'); renderFicha(); });
+}
+
+function renderFicha(){
+  if(!S.ficha) return;
+  var c = S.ficha.colab, p = S.ficha.periodo;
+  var cfg = galpaoCfg(c.galpao);
+  var datas = intervaloDatas(p.de, p.ate);
+  var r = consolidar(c, datas);
+
+  var kpis = kpi('Horas trabalhadas', min2dur(r.trabalhado), min2h(r.trabalhado)+' h decimais', 'v-brand')
+    + kpi('Horas previstas', min2dur(r.previsto), r.diasUteis + ' dias úteis', '')
+    + kpi('Saldo', (r.saldo>=0?'+':'')+min2dur(r.saldo), r.saldo>=0?'Acima do previsto':'Abaixo do previsto', r.saldo>=0?'v-ok':'v-erro')
+    + kpi('Presenças', String(r.presencas), 'Dias trabalhados', '')
+    + kpi('Faltas', String(r.faltas), 'Não justificadas', r.faltas?'v-erro':'')
+    + kpi('Faltas justificadas', String(r.faltasJust), 'No período', r.faltasJust?'v-alerta':'');
+
+  var linhas = '';
+  datas.forEach(function(d){
+    var ef = statusEfetivo(d, c, cfg);
+    var prev = minutosPrevistos(cfg, d);
+    var mins = ef.status === 'PRESENTE' ? minutosTrabalhados(ef.reg, cfg) : 0;
+    var util = ehDiaUtil(cfg, d);
+    var fer = feriadoDe(d, cfg.id);
+    var saldo = mins - prev;
+
+    var rotulo, cor = '';
+    if(ef.status === 'PRESENTE'){ rotulo = 'Presente'; cor = 'color:#065f46'; }
+    else if(ef.status === 'FALTA'){ rotulo = 'Falta'; cor = 'color:var(--erro);font-weight:700'; }
+    else if(ef.status === 'FALTA_JUSTIFICADA'){ rotulo = 'Falta justificada'; cor = 'color:var(--alerta);font-weight:700'; }
+    else if(ef.status === 'FERIADO'){ rotulo = fer ? ('Feriado — ' + fer.descricao) : 'Feriado'; cor = 'color:var(--info)'; }
+    else if(!util){ rotulo = 'Dia não útil'; cor = 'color:var(--txt3)'; }
+    else { rotulo = 'Sem lançamento'; cor = 'color:var(--txt3)'; }
+
+    var ent = ef.status === 'PRESENTE' ? ((ef.reg && ef.reg.entrada) || cfg.entrada) : '—';
+    var sai = ef.status === 'PRESENTE' ? ((ef.reg && ef.reg.saida) || cfg.saida) : '—';
+    var pendente = Object.prototype.hasOwnProperty.call(S.pendentes, d + '|' + c.id);
+
+    linhas += '<tr style="'+(util || ef.status ? '' : 'background:#fafbfc')+'">'
+      + '<td class="nome">'+brData(d)+(pendente?' <span style="color:var(--brand)">•</span>':'')+'</td>'
+      + '<td style="color:var(--txt2)">'+DIAS_CURTO[diaSemana(d)]+'</td>'
+      + '<td style="'+cor+'">'+esc(rotulo)+'</td>'
+      + '<td class="num" style="font-variant-numeric:tabular-nums">'+ent+'</td>'
+      + '<td class="num" style="font-variant-numeric:tabular-nums">'+sai+'</td>'
+      + '<td class="num" style="font-weight:700">'+(mins ? min2dur(mins) : '—')+'</td>'
+      + '<td class="num" style="color:var(--txt2)">'+(prev ? min2dur(prev) : '—')+'</td>'
+      + '<td class="num">'+(prev || mins ? '<span class="'+(saldo>=0?'saldo-pos':'saldo-neg')+'">'+(saldo>=0?'+':'')+min2dur(saldo)+'</span>' : '—')+'</td>'
+      + '<td style="color:var(--txt2)">'+esc((ef.reg && ef.reg.obs) || '')+'</td>'
+      + '<td class="num">'+(ef.bloq ? '' : '<button class="btn sm" data-ficha-dia="'+d+'">Editar</button>')+'</td>'
+      + '</tr>';
+  });
+
+  document.getElementById('fiConteudo').innerHTML =
+      '<div class="kpis">'+kpis+'</div>'
+    + '<div class="card">'
+    +   '<div class="card-cab">'
+    +     '<h2>'+esc(c.nome)+' · <span class="tag g'+esc(c.galpao)+'">'+esc(cfg.nome)+'</span></h2>'
+    +     '<div style="font-size:12.5px;color:var(--txt2)">'
+    +       brData(p.de)+' a '+brData(p.ate)+' · jornada '+cfg.entrada+'–'+cfg.saida+' ('+min2dur(minutosPadrao(cfg))+'/dia)'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="tab-wrap"><table id="fiTabela">'
+    +     '<thead><tr><th>Data</th><th>Dia</th><th>Status</th><th class="num">Entrada</th><th class="num">Saída</th>'
+    +     '<th class="num">Trabalhado</th><th class="num">Previsto</th><th class="num">Saldo</th><th>Observação</th><th></th></tr></thead>'
+    +     '<tbody>'+linhas+'</tbody>'
+    +     '<tfoot><tr style="background:#f8fafc;font-weight:700">'
+    +       '<td colspan="5">Total do período</td>'
+    +       '<td class="num">'+min2dur(r.trabalhado)+'</td>'
+    +       '<td class="num">'+min2dur(r.previsto)+'</td>'
+    +       '<td class="num"><span class="'+(r.saldo>=0?'saldo-pos':'saldo-neg')+'">'+(r.saldo>=0?'+':'')+min2dur(r.saldo)+'</span></td>'
+    +       '<td colspan="2"></td>'
+    +     '</tr></tfoot>'
+    +   '</table></div>'
+    + '</div>';
+}
+
+/* Editar um dia direto da ficha */
+document.getElementById('fiConteudo').addEventListener('click', function(e){
+  var b = e.target.closest('[data-ficha-dia]');
+  if(b && S.ficha) abrirCelula(b.dataset.fichaDia, S.ficha.colab.id);
+});
+
+document.getElementById('fiCsv').onclick = function(){
+  if(!S.ficha){ toast('Abra a ficha de alguém primeiro.', 'erro'); return; }
+  var c = S.ficha.colab, p = S.ficha.periodo, cfg = galpaoCfg(c.galpao);
+  var datas = intervaloDatas(p.de, p.ate);
+  var l = ['Data;Dia;Status;Entrada;Saida;Trabalhado;Previsto;Saldo;Horas decimais;Observacao'];
+  datas.forEach(function(d){
+    var ef = statusEfetivo(d, c, cfg);
+    var prev = minutosPrevistos(cfg, d);
+    var mins = ef.status === 'PRESENTE' ? minutosTrabalhados(ef.reg, cfg) : 0;
+    var rot = ef.status ? (STATUS_ROT[ef.status] || ef.status) : (ehDiaUtil(cfg,d) ? 'Sem lancamento' : 'Dia nao util');
+    l.push([
+      brData(d), DIAS_CURTO[diaSemana(d)], rot,
+      ef.status === 'PRESENTE' ? ((ef.reg && ef.reg.entrada) || cfg.entrada) : '',
+      ef.status === 'PRESENTE' ? ((ef.reg && ef.reg.saida) || cfg.saida) : '',
+      min2dur(mins), min2dur(prev), (mins-prev>=0?'+':'')+min2dur(mins-prev), min2h(mins),
+      String((ef.reg && ef.reg.obs) || '').replace(/;/g, ',')
+    ].join(';'));
+  });
+  var r = consolidar(c, datas);
+  l.push('');
+  l.push('TOTAL;;;;;'+min2dur(r.trabalhado)+';'+min2dur(r.previsto)+';'+(r.saldo>=0?'+':'')+min2dur(r.saldo)+';'+min2h(r.trabalhado)+';');
+  l.push('Presencas;'+r.presencas+';Faltas;'+r.faltas+';Faltas justificadas;'+r.faltasJust+';Feriados;'+r.feriados);
+
+  var blob = new Blob(['﻿' + l.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ficha_' + chave(c.nome).replace(/\s+/g,'-') + '_' + p.de + '_a_' + p.ate + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 };
 
 /* =========================================================
@@ -1205,7 +1435,7 @@ function montarRelatorio(p){
   }
   linhas.forEach(function(r){
     t += '<tr>'
-       + '<td class="nome">'+esc(r.colab.nome)+'</td>'
+       + '<td class="nome"><button class="link-ficha" data-rel-colab="'+esc(r.colab.id)+'" title="Abrir a ficha desta pessoa">'+esc(r.colab.nome)+'</button></td>'
        + '<td><span class="tag g'+esc(r.colab.galpao)+'">'+esc(galpaoCfg(r.colab.galpao).nome)+'</span></td>'
        + '<td class="num">'+r.diasUteis+'</td>'
        + '<td class="num">'+r.presencas+'</td>'
@@ -1258,6 +1488,22 @@ function montarRelatorio(p){
   d += '</tbody>';
   document.getElementById('tabDia').innerHTML = d;
 }
+
+/* Clicar no nome no relatório abre a ficha da pessoa no mesmo período */
+document.getElementById('tabRel').addEventListener('click', function(e){
+  var b = e.target.closest('[data-rel-colab]');
+  if(!b || !S.relatorio) return;
+  var p = S.relatorio.periodo;
+  document.getElementById('fiTipo').value = 'livre';
+  document.getElementById('fiTipo').onchange();
+  document.getElementById('fiDe').value = p.de;
+  document.getElementById('fiAte').value = p.ate;
+  document.getElementById('fiBusca').value = '';
+  renderSelectFicha();
+  document.getElementById('fiColab').value = b.dataset.relColab;
+  irPara('ficha');
+  abrirFicha(b.dataset.relColab, p);
+});
 
 document.getElementById('btnCsv').onclick = function(){
   if(!S.relatorio || !S.relatorio.linhas.length){ toast('Gere o relatório primeiro.', 'erro'); return; }
@@ -1348,7 +1594,7 @@ document.getElementById('coSalvar').onclick = function(){
       var i = -1;
       S.colaboradores.forEach(function(x, ix){ if(x.id === c.id) i = ix; });
       if(i >= 0) S.colaboradores[i] = c; else S.colaboradores.push(c);
-      fecharModais(); renderColab(); renderPonto();
+      fecharModais(); renderColab(); renderSelectFicha(); renderPonto();
       toast('Colaborador salvo.', 'ok');
     })
     .catch(function(e){ toast(e.message, 'erro'); })
@@ -1361,7 +1607,7 @@ document.getElementById('coExcluir').onclick = function(){
   api('deleteColaborador', { id: colabEdit.id })
     .then(function(){
       S.colaboradores = S.colaboradores.filter(function(c){ return c.id !== colabEdit.id; });
-      fecharModais(); renderColab(); renderPonto();
+      fecharModais(); renderColab(); renderSelectFicha(); renderPonto();
       toast('Colaborador excluído.', 'ok');
     })
     .catch(function(e){ toast(e.message, 'erro'); });
@@ -1423,7 +1669,7 @@ document.getElementById('feSalvar').onclick = function(){
       var f = d.feriado, i = -1;
       S.feriados.forEach(function(x, ix){ if(x.id === f.id) i = ix; });
       if(i >= 0) S.feriados[i] = f; else S.feriados.push(f);
-      fecharModais(); renderFeriados(); renderPonto();
+      fecharModais(); renderFeriados(); renderPonto(); renderFicha();
       toast('Feriado salvo.', 'ok');
     })
     .catch(function(e){ toast(e.message, 'erro'); })
@@ -1435,7 +1681,7 @@ document.getElementById('feExcluir').onclick = function(){
   api('deleteFeriado', { id: ferEdit.id })
     .then(function(){
       S.feriados = S.feriados.filter(function(f){ return f.id !== ferEdit.id; });
-      fecharModais(); renderFeriados(); renderPonto();
+      fecharModais(); renderFeriados(); renderPonto(); renderFicha();
       toast('Feriado excluído.', 'ok');
     })
     .catch(function(e){ toast(e.message, 'erro'); });
@@ -1493,7 +1739,7 @@ document.getElementById('btnFeriadosBR').onclick = function(){
     });
   });
   seq.then(function(){
-    renderFeriados(); renderPonto();
+    renderFeriados(); renderPonto(); renderFicha();
     toast(novos.length + ' feriados importados.', 'ok');
   })
   .catch(function(e){ toast(e.message, 'erro'); })
@@ -1608,6 +1854,9 @@ S.semana = segundaDe(hoje());
 document.getElementById('rMes').value = hoje().slice(0,7);
 document.getElementById('rDe').value = hoje().slice(0,8) + '01';
 document.getElementById('rAte').value = hoje();
+document.getElementById('fiMes').value = hoje().slice(0,7);
+document.getElementById('fiDe').value = hoje().slice(0,8) + '01';
+document.getElementById('fiAte').value = hoje();
 bootstrap();
 </script>
 </body>
