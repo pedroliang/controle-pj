@@ -111,10 +111,14 @@ td.nome{font-weight:600;white-space:nowrap}
 .pt-tab th.folga{background:#f1f5f9;color:var(--txt3)}
 .pt-tab td.p-tot,.pt-tab th.p-tot{background:#f8fafc;font-weight:700;text-align:right;padding:8px 12px;white-space:nowrap;font-variant-numeric:tabular-nums;border-right:none}
 
-.cel{width:100%;min-width:76px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:.1s;border-radius:0}
+.cel{width:100%;min-width:84px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:.1s;border-radius:0}
 .cel:hover{box-shadow:inset 0 0 0 2px var(--brand)}
 .cel .tg{font-size:11px;font-weight:800;letter-spacing:.03em}
-.cel .hs{font-size:10.5px;opacity:.8;font-variant-numeric:tabular-nums}
+.cel .hs{font-size:9.5px;opacity:.75;font-variant-numeric:tabular-nums;text-transform:uppercase;letter-spacing:.02em}
+.cel .hr-ent,.cel .hr-sai{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;display:block}
+.cel .hr-sai{opacity:.7}
+.cel .hr-sai::before{content:'↓ ';font-size:9px;opacity:.6}
+.cel .hr-ent::before{content:'↑ ';font-size:9px;opacity:.6}
 .cel.vazio{background:var(--surface);color:var(--txt3)}
 .cel.vazio .tg{font-weight:400;font-size:16px;opacity:.35}
 .cel.st-PRESENTE{background:var(--ok-luz);color:#065f46}
@@ -256,7 +260,7 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
     </div>
     <div class="tab-wrap"><table class="pt-tab" id="gradePonto"></table></div>
     <div class="legenda">
-      <span style="font-weight:600;color:var(--txt)">O número na célula é o total de horas do dia (ex.: 8h), não o horário de entrada.</span>
+      <span style="font-weight:600;color:var(--txt)">A célula mostra ↑ entrada e ↓ saída. O total de horas fica no rodapé (por dia) e na coluna Semana (por pessoa).</span>
       <span><i style="background:var(--ok)"></i> Presente</span>
       <span><i style="background:var(--erro)"></i> Falta</span>
       <span><i style="background:var(--alerta)"></i> Falta justificada</span>
@@ -852,7 +856,7 @@ function renderPonto(){
        +   (f ? '<span class="fer-tag" title="'+esc(f.descricao)+'">'+esc(f.descricao)+'</span>' : '')
        + '</th>';
   });
-  h += '<th class="p-tot">Semana</th></tr></thead>';
+  h += '<th class="p-tot">Total<br><span style="font-weight:400;text-transform:none">na semana</span></th></tr></thead>';
 
   // Corpo
   var totalDia = {}; datas.forEach(function(d){ totalDia[d] = 0; });
@@ -865,9 +869,17 @@ function renderPonto(){
       totalDia[d] += mins;
       var alt = Object.prototype.hasOwnProperty.call(S.pendentes, d + '|' + c.id);
       var cls = 'cel ' + (ef.status ? 'st-' + ef.status : 'vazio') + (ef.bloq ? ' bloq' : '');
-      var conteudo = ef.status
-        ? '<span class="tg">' + (STATUS_SIGLA[ef.status] || '—') + '</span>' + (ef.status === 'PRESENTE' ? '<span class="hs">'+min2dur(mins)+'</span>' : '')
-        : '<span class="tg">+</span>';
+      var ent = (ef.reg && ef.reg.entrada) || cfg.entrada;
+      var sai = (ef.reg && ef.reg.saida) || cfg.saida;
+      var conteudo;
+      if(ef.status === 'PRESENTE'){
+        conteudo = '<span class="hr-ent">'+ent+'</span><span class="hr-sai">'+sai+'</span>';
+      } else if(ef.status){
+        conteudo = '<span class="tg">' + (STATUS_SIGLA[ef.status] || '—') + '</span>'
+                 + '<span class="hs">' + (STATUS_ROT[ef.status] || '') + '</span>';
+      } else {
+        conteudo = '<span class="tg">+</span>';
+      }
       var dica = c.nome + ' — ' + brExtenso(d)
                + (ef.status ? '\n' + (STATUS_ROT[ef.status] || ef.status) : '')
                + (ef.status === 'PRESENTE' ? '\n' + min2dur(mins) + ' trabalhadas (' + ((ef.reg && ef.reg.entrada) || cfg.entrada) + ' às ' + ((ef.reg && ef.reg.saida) || cfg.saida) + ')' : '');

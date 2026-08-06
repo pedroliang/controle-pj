@@ -24,6 +24,8 @@ jobs:
           node-version: '20'
       - name: Rodar testes dos cálculos
         run: node tests/testes.js
+      - name: Rodar testes da grade
+        run: node tests/teste-grade.js
 
   publicar:
     needs: testes
