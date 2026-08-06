@@ -80,6 +80,15 @@ eq('min2hm 450', min2hm(450), '07:30');
 eq('min2hm negativo', min2hm(-90), '-01:30');
 eq('min2h decimal', min2h(450), '7,50');
 
+grupo('Duração (formato que não parece relógio)');
+eq('8 horas cheias viram 8h', ctx.min2dur(480), '8h');
+eq('7h30', ctx.min2dur(450), '7h30');
+eq('45 minutos', ctx.min2dur(45), '0h45');
+eq('zero', ctx.min2dur(0), '0h');
+eq('negativo', ctx.min2dur(-900), '-15h');
+eq('288 horas da semana toda', ctx.min2dur(288 * 60), '288h');
+eq('nunca sai no formato 08:00', /^\d{2}:\d{2}$/.test(ctx.min2dur(480)), false);
+
 /* ---------- Jornada dos galpões ---------- */
 grupo('Jornada padrão');
 S.config = {};

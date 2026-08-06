@@ -256,6 +256,7 @@ code.ep{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:12px;word
     </div>
     <div class="tab-wrap"><table class="pt-tab" id="gradePonto"></table></div>
     <div class="legenda">
+      <span style="font-weight:600;color:var(--txt)">O número na célula é o total de horas do dia (ex.: 8h), não o horário de entrada.</span>
       <span><i style="background:var(--ok)"></i> Presente</span>
       <span><i style="background:var(--erro)"></i> Falta</span>
       <span><i style="background:var(--alerta)"></i> Falta justificada</span>
@@ -536,6 +537,13 @@ function min2hm(m){
   return (neg ? '-' : '') + String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
 }
 function min2h(m){ return (m/60).toFixed(2).replace('.', ','); }
+
+/** Duração em formato que não se confunde com horário de relógio: 8h, 7h30, -15h. */
+function min2dur(m){
+  var neg = m < 0; m = Math.abs(Math.round(m));
+  var h = Math.floor(m/60), mi = m % 60;
+  return (neg ? '-' : '') + h + 'h' + (mi ? String(mi).padStart(2,'0') : '');
+}
 
 /* =========================================================
    CONFIGURAÇÃO DOS GALPÕES
@@ -819,7 +827,7 @@ function renderPonto(){
 
   document.getElementById('semRot').textContent = brData(S.semana) + ' — ' + brData(addDias(S.semana,6));
   document.getElementById('tituloGrade').textContent =
-    cfg.nome + ' · ' + cfg.entrada + ' às ' + cfg.saida + ' · ' + cfg.intervalo + 'min de intervalo · ' + min2hm(minutosPadrao(cfg)) + '/dia';
+    cfg.nome + ' · ' + cfg.entrada + ' às ' + cfg.saida + ' · ' + cfg.intervalo + 'min de intervalo · ' + min2dur(minutosPadrao(cfg)) + '/dia';
 
   var tab = document.getElementById('gradePonto');
   if(!lista.length){
@@ -858,10 +866,13 @@ function renderPonto(){
       var alt = Object.prototype.hasOwnProperty.call(S.pendentes, d + '|' + c.id);
       var cls = 'cel ' + (ef.status ? 'st-' + ef.status : 'vazio') + (ef.bloq ? ' bloq' : '');
       var conteudo = ef.status
-        ? '<span class="tg">' + (STATUS_SIGLA[ef.status] || '—') + '</span>' + (ef.status === 'PRESENTE' ? '<span class="hs">'+min2hm(mins)+'</span>' : '')
+        ? '<span class="tg">' + (STATUS_SIGLA[ef.status] || '—') + '</span>' + (ef.status === 'PRESENTE' ? '<span class="hs">'+min2dur(mins)+'</span>' : '')
         : '<span class="tg">+</span>';
+      var dica = c.nome + ' — ' + brExtenso(d)
+               + (ef.status ? '\n' + (STATUS_ROT[ef.status] || ef.status) : '')
+               + (ef.status === 'PRESENTE' ? '\n' + min2dur(mins) + ' trabalhadas (' + ((ef.reg && ef.reg.entrada) || cfg.entrada) + ' às ' + ((ef.reg && ef.reg.saida) || cfg.saida) + ')' : '');
       b += '<td>'
-         +   '<button class="'+cls+'" data-d="'+d+'" data-c="'+esc(c.id)+'" title="'+esc(c.nome+' — '+brExtenso(d))+'">'
+         +   '<button class="'+cls+'" data-d="'+d+'" data-c="'+esc(c.id)+'" title="'+esc(dica)+'">'
          +     conteudo
          +   '</button>'
          +   (alt ? '<span class="marca-alt"></span>' : '')
@@ -869,8 +880,8 @@ function renderPonto(){
     });
     var res = consolidar(c, datas);
     var sc = res.saldo === 0 ? '' : (res.saldo > 0 ? 'saldo-pos' : 'saldo-neg');
-    b += '<td class="p-tot">'+min2hm(res.trabalhado)
-       + '<div style="font-weight:600;font-size:11px" class="'+sc+'">'+(res.saldo>=0?'+':'')+min2hm(res.saldo)+'</div></td>';
+    b += '<td class="p-tot">'+min2dur(res.trabalhado)
+       + '<div style="font-weight:600;font-size:11px" class="'+sc+'">'+(res.saldo>=0?'+':'')+min2dur(res.saldo)+'</div></td>';
     b += '</tr>';
   });
 
@@ -879,9 +890,9 @@ function renderPonto(){
   var somaSemana = 0;
   datas.forEach(function(d){
     somaSemana += totalDia[d];
-    b += '<td class="p-tot" style="text-align:center">'+(totalDia[d] ? min2hm(totalDia[d]) : '—')+'</td>';
+    b += '<td class="p-tot" style="text-align:center">'+(totalDia[d] ? min2dur(totalDia[d]) : '—')+'</td>';
   });
-  b += '<td class="p-tot">'+min2hm(somaSemana)+'</td></tr></tfoot>';
+  b += '<td class="p-tot">'+min2dur(somaSemana)+'</td></tr></tfoot>';
 
   tab.innerHTML = h + b;
   renderKpisSemana(lista, datas);
@@ -897,9 +908,9 @@ function renderKpisSemana(lista, datas){
   });
   var saldo = t.trabalhado - t.previsto;
   document.getElementById('kpisSemana').innerHTML =
-      kpi('Horas na semana', min2hm(t.trabalhado), min2h(t.trabalhado)+' h decimais', 'v-brand')
-    + kpi('Previsto', min2hm(t.previsto), lista.length + ' colaborador(es)', '')
-    + kpi('Saldo', (saldo>=0?'+':'')+min2hm(saldo), saldo>=0?'Acima do previsto':'Abaixo do previsto', saldo>=0?'v-ok':'v-erro')
+      kpi('Horas na semana', min2dur(t.trabalhado), min2h(t.trabalhado)+' h decimais', 'v-brand')
+    + kpi('Previsto', min2dur(t.previsto), lista.length + ' colaborador(es)', '')
+    + kpi('Saldo', (saldo>=0?'+':'')+min2dur(saldo), saldo>=0?'Acima do previsto':'Abaixo do previsto', saldo>=0?'v-ok':'v-erro')
     + kpi('Faltas', String(t.faltas), 'Não justificadas', t.faltas?'v-erro':'')
     + kpi('Faltas justificadas', String(t.faltasJust), 'No período', t.faltasJust?'v-alerta':'');
 }
@@ -1041,7 +1052,7 @@ function calcTotalModal(){
     saida: document.getElementById('celSaida').value,
     intervalo_min: document.getElementById('celIntervalo').value
   }, S.celAtual.cfg);
-  document.getElementById('celTotal').textContent = min2hm(m) + '  (' + min2h(m) + ' h)';
+  document.getElementById('celTotal').textContent = min2dur(m) + ' trabalhadas  (' + min2h(m) + ' h decimais)';
 }
 
 document.getElementById('celStatus').addEventListener('click', function(e){
@@ -1135,9 +1146,9 @@ function montarRelatorio(p){
   var saldo = tot.trabalhado - tot.previsto;
 
   document.getElementById('kpisRel').innerHTML =
-      kpi('Horas trabalhadas', min2hm(tot.trabalhado), min2h(tot.trabalhado)+' h decimais', 'v-brand')
-    + kpi('Horas previstas', min2hm(tot.previsto), brData(p.de)+' a '+brData(p.ate), '')
-    + kpi('Saldo do período', (saldo>=0?'+':'')+min2hm(saldo), saldo>=0?'Acima do previsto':'Abaixo do previsto', saldo>=0?'v-ok':'v-erro')
+      kpi('Horas trabalhadas', min2dur(tot.trabalhado), min2h(tot.trabalhado)+' h decimais', 'v-brand')
+    + kpi('Horas previstas', min2dur(tot.previsto), brData(p.de)+' a '+brData(p.ate), '')
+    + kpi('Saldo do período', (saldo>=0?'+':'')+min2dur(saldo), saldo>=0?'Acima do previsto':'Abaixo do previsto', saldo>=0?'v-ok':'v-erro')
     + kpi('Faltas', String(tot.faltas), 'Não justificadas', tot.faltas?'v-erro':'')
     + kpi('Faltas justificadas', String(tot.faltasJust), 'No período', tot.faltasJust?'v-alerta':'')
     + kpi('Dias presentes', String(tot.presencas), lista.length + ' colaborador(es)', '');
@@ -1158,9 +1169,9 @@ function montarRelatorio(p){
        + '<td class="num" style="'+(r.faltas?'color:var(--erro);font-weight:700':'')+'">'+r.faltas+'</td>'
        + '<td class="num" style="'+(r.faltasJust?'color:var(--alerta);font-weight:700':'')+'">'+r.faltasJust+'</td>'
        + '<td class="num">'+r.feriados+'</td>'
-       + '<td class="num" style="font-weight:700">'+min2hm(r.trabalhado)+'</td>'
-       + '<td class="num" style="color:var(--txt2)">'+min2hm(r.previsto)+'</td>'
-       + '<td class="num"><span class="'+(r.saldo>=0?'saldo-pos':'saldo-neg')+'">'+(r.saldo>=0?'+':'')+min2hm(r.saldo)+'</span></td>'
+       + '<td class="num" style="font-weight:700">'+min2dur(r.trabalhado)+'</td>'
+       + '<td class="num" style="color:var(--txt2)">'+min2dur(r.previsto)+'</td>'
+       + '<td class="num"><span class="'+(r.saldo>=0?'saldo-pos':'saldo-neg')+'">'+(r.saldo>=0?'+':'')+min2dur(r.saldo)+'</span></td>'
        + '</tr>';
   });
   t += '</tbody>';
@@ -1168,8 +1179,8 @@ function montarRelatorio(p){
     t += '<tfoot><tr style="background:#f8fafc;font-weight:700">'
        + '<td colspan="4">Total geral</td>'
        + '<td class="num">'+tot.faltas+'</td><td class="num">'+tot.faltasJust+'</td><td class="num">—</td>'
-       + '<td class="num">'+min2hm(tot.trabalhado)+'</td><td class="num">'+min2hm(tot.previsto)+'</td>'
-       + '<td class="num"><span class="'+(saldo>=0?'saldo-pos':'saldo-neg')+'">'+(saldo>=0?'+':'')+min2hm(saldo)+'</span></td>'
+       + '<td class="num">'+min2dur(tot.trabalhado)+'</td><td class="num">'+min2dur(tot.previsto)+'</td>'
+       + '<td class="num"><span class="'+(saldo>=0?'saldo-pos':'saldo-neg')+'">'+(saldo>=0?'+':'')+min2dur(saldo)+'</span></td>'
        + '</tr></tfoot>';
   }
   document.getElementById('tabRel').innerHTML = t;
@@ -1196,7 +1207,7 @@ function montarRelatorio(p){
        + '<td class="num">'+linha.p+'</td>'
        + '<td class="num" style="'+(linha.f?'color:var(--erro);font-weight:700':'')+'">'+linha.f+'</td>'
        + '<td class="num" style="'+(linha.fj?'color:var(--alerta);font-weight:700':'')+'">'+linha.fj+'</td>'
-       + '<td class="num" style="font-weight:700">'+min2hm(linha.min)+'</td>'
+       + '<td class="num" style="font-weight:700">'+min2dur(linha.min)+'</td>'
        + '<td style="color:var(--txt2)">'+(fer ? esc(fer.descricao) : '')+'</td>'
        + '</tr>';
   });
@@ -1211,7 +1222,7 @@ document.getElementById('btnCsv').onclick = function(){
   S.relatorio.linhas.forEach(function(r){
     l.push([
       r.colab.nome, galpaoCfg(r.colab.galpao).nome, r.diasUteis, r.presencas, r.faltas, r.faltasJust, r.feriados,
-      min2hm(r.trabalhado), min2hm(r.previsto), (r.saldo>=0?'+':'')+min2hm(r.saldo), min2h(r.trabalhado)
+      min2dur(r.trabalhado), min2dur(r.previsto), (r.saldo>=0?'+':'')+min2dur(r.saldo), min2h(r.trabalhado)
     ].join(';'));
   });
   var blob = new Blob(['﻿' + l.join('\r\n')], { type:'text/csv;charset=utf-8' });
@@ -1249,7 +1260,7 @@ function renderColab(){
     t += '<tr>'
        + '<td class="nome">'+esc(c.nome)+'</td>'
        + '<td><span class="tag g'+esc(c.galpao)+'">'+esc(cfg.nome)+'</span></td>'
-       + '<td style="color:var(--txt2)">'+cfg.entrada+'–'+cfg.saida+' · '+min2hm(minutosPadrao(cfg))+'/dia</td>'
+       + '<td style="color:var(--txt2)">'+cfg.entrada+'–'+cfg.saida+' · '+min2dur(minutosPadrao(cfg))+'/dia</td>'
        + '<td style="color:var(--txt2)">'+esc(c.documento || '—')+'</td>'
        + '<td><span class="tag '+(c.ativo?'on':'off')+'">'+(c.ativo?'Ativo':'Inativo')+'</span></td>'
        + '<td class="num"><button class="btn sm" data-edit-colab="'+esc(c.id)+'">Editar</button></td>'
@@ -1509,8 +1520,8 @@ function renderCfgGalpoes(){
       + '<div><span style="display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:7px">Dias de trabalho</span>'
       +   '<div style="display:flex;gap:12px;flex-wrap:wrap" data-dias="'+g.id+'">'+dias+'</div></div>'
       + '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--txt2)">'
-      +   'Jornada diária: <b style="color:var(--txt)">'+min2hm(minutosPadrao(g))+'</b> · '
-      +   'Semanal: <b style="color:var(--txt)">'+min2hm(minutosPadrao(g)*g.dias.length)+'</b>'
+      +   'Jornada diária: <b style="color:var(--txt)">'+min2dur(minutosPadrao(g))+'</b> · '
+      +   'Semanal: <b style="color:var(--txt)">'+min2dur(minutosPadrao(g)*g.dias.length)+'</b>'
       + '</div></div>';
   }).join('');
   document.getElementById('cfgGalpoes').innerHTML = html;
